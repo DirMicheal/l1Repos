@@ -60,6 +60,10 @@ test.describe('ui', () => {
   test('attempts', async ({ page }) => {
     await testAttempts(page)
   })
+
+  test('viewport-selector', async ({ page }) => {
+    await testViewportSelector(page)
+  })
 })
 
 test.describe('html reporter', () => {
@@ -203,6 +207,41 @@ async function testViewport(page: Page) {
   await expect(traceView).toBeVisible()
   await traceSteps.getByText('Render viewport').click()
   await expect(traceFrame.locator('.viewport-pass')).toBeVisible()
+}
+
+async function testViewportSelector(page: Page) {
+  const panel = page.locator('#browser-frame')
+  const sizeLabel = panel.getByTestId('browser-viewport-size')
+  const preset = panel.getByTestId('browser-viewport-preset')
+  const width = panel.getByTestId('browser-viewport-width')
+  const height = panel.getByTestId('browser-viewport-height')
+
+  // the preview defaults to the large mobile viewport
+  await expect(sizeLabel).toBeVisible()
+  await expect(sizeLabel).toContainText('414x896px')
+
+  // the existing quick buttons still apply their preset
+  await panel.getByRole('button', { name: 'Tablet' }).click()
+  await expect(sizeLabel).toContainText('834x1112px')
+
+  // the dropdown exposes more common sizes
+  await preset.selectOption('iPad Mini')
+  await expect(sizeLabel).toContainText('768x1024px')
+
+  // a custom width/height can be typed and applied with the button
+  await width.fill('500')
+  await height.fill('700')
+  await panel.getByTestId('browser-viewport-apply').click()
+  await expect(sizeLabel).toContainText('500x700px')
+  // a size that matches no preset falls back to "Custom"
+  await expect(preset).toHaveValue('')
+
+  // a custom size can also be applied by pressing Enter inside an input
+  await width.fill('333')
+  await height.fill('777')
+  await height.press('Enter')
+  await expect(sizeLabel).toContainText('333x777px')
+  await expect(preset).toHaveValue('')
 }
 
 async function testPseudoState(page: Page) {
